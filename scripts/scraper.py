@@ -1,34 +1,33 @@
+import json
+from kafka import KafkaProducer
 import requests
 from bs4 import BeautifulSoup
-import json
-from datetime import datetime
 
-SOURCES = {
-    "Hespress": {"url": "https://www.hespress.com", "t": "h1.post-title", "b": ".article-content p"},
-    "CNN": {"url": "https://edition.cnn.com", "t": "h1.headline__text", "b": ".article__content p"},
-    "BBC": {"url": "https://www.bbc.com/news", "t": "main h1", "b": "article p"}
-}
+# Setup Kafka Producer
+producer = KafkaProducer(
+    bootstrap_servers=['localhost:9092'],
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
 
-def run_scraping():
-    results = []
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    for name, config in SOURCES.items():
-        try:
-            res = requests.get(config['url'], headers=headers, timeout=10)
-            soup = BeautifulSoup(res.text, 'html.parser')
-            # Extracting titles based on the provided CSS selector, limiting to the top 5
-            titles = soup.select(config['t'])[:5]
-            for t in titles:
-                results.append({
-                    "title": t.text.strip(),
-                    "source": name,
-                    "scraped_at": datetime.now().isoformat()
-                })
-        except Exception as e:
-            print(f"Error {name}: {e}")
-            
-    with open("/opt/airflow/scripts/news_raw.json", "w") as f:
-        json.dump(results, f)
+def scrape_article(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Extracting data points
+    data = {
+        "title": soup.find('h1').text if soup.find('h1') else None,
+        "author": "Author Name", # Replace with actual selector
+        "date_publication": "2026-03-25", # Replace with actual selector
+        "content": soup.find('div', class_='content').text if soup.find('div', class_='content') else None,
+        "source": "Hespress", 
+        "url": url
+    }
+    
+    # 1. Streaming Ingestion: Send to Kafka immediately 
+    producer.send('news_topic', data)
+    
+    # 2. Batch Ingestion: Return for local Bronze storage
+    return data
 
-if __name__ == "__main__":
-    run_scraping()
+# Example usage
+# scrape_article("https://www.hespress.com/example-article")

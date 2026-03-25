@@ -1,19 +1,32 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
-from datetime import datetime
-import sys
-sys.path.append('/opt/airflow/scripts')
-from scraper import run_scraping
+from datetime import datetime, timedelta
 
-with DAG('pfe_news_pipeline', start_date=datetime(2026, 3, 25), schedule_interval='@daily') as dag:
-    
-    task_ingest = PythonOperator(task_id='ingest_news', python_callable=run_scraping)
-    
-    task_transform = SparkSubmitOperator(
-        task_id='spark_process',
-        application='/opt/airflow/scripts/spark_transform.py',
-        conn_id='spark_default'
+default_args = {
+    'owner': 'iadata_student',
+    'depends_on_past': False,
+    'start_date': datetime(2026, 3, 1),
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
+
+with DAG(
+    'bdarch_news_pipeline',
+    default_args=default_args,
+    schedule_interval='@hourly',
+    catchup=False
+) as dag:
+
+    def run_scraper():
+        # Example URLs
+        urls = [("https://example.com/news1", "Hespress")]
+        from scraper import bdarch_scrape_article
+        for url, source in urls:
+            bdarch_scrape_article(url, source)
+
+    task_scrape = PythonOperator(
+        task_id='scrape_news_data',
+        python_callable=run_scraper
     )
 
-    task_ingest >> task_transform
+    # Add Spark submit tasks here to trigger spark_transform.py

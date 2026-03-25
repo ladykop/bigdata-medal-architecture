@@ -41,7 +41,7 @@ The solution is built on a **Medallion Architecture** (Multi-Layer Data Lake) to
 ## Project Structure
 
 ```text
-pfe_bigdata/
+bdarch_bigdata/
 ├── Dockerfile              # Custom Spark image (S3 & JDBC drivers included)
 ├── docker-compose.yml      # Infrastructure orchestration
 ├── requirements.txt        # Python dependencies
@@ -107,7 +107,7 @@ The following services should be running:
 
 ### 5. Run the Pipeline
 
-1. Enable the DAG `pfe_news_pipeline`
+1. Enable the DAG `bdarch_news_pipeline`
 2. Click **Trigger DAG**
 
 ---
@@ -130,7 +130,7 @@ The following services should be running:
 Connect to PostgreSQL:
 
 ```bash
-docker exec -it pfe_bigdata-postgres-1 psql -U admin -d data_warehouse
+docker exec -it bdarch_bigdata-postgres-1 psql -U admin -d data_warehouse
 ```
 
 Run the query:

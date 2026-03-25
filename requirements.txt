@@ -1,6 +1,10 @@
-# Scraping & Parsing Requests 
+# Scraping & Parsing
 requests==2.31.0
 beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Messaging & Streaming
+kafka-python==2.0.2
 
 # Data Manipulation & Database
 pandas==2.1.1
@@ -12,3 +16,7 @@ apache-airflow==2.7.1
 # Spark & Cloud Storage
 pyspark==3.4.1
 boto3==1.28.44
+delta-spark==2.4.0
+
+# Quality & Language (Optional)
+langdetect==1.0.9
