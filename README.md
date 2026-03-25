@@ -1,76 +1,76 @@
-# Plateforme Big Data : Analyse Médiatique (Architecture Médaillon)
+# Big Data Platform: Media Analysis (Medallion Architecture)
 
-Cette plateforme met en place une architecture Big Data distribuée permettant de collecter, transformer et analyser des articles de presse issus de sources marocaines (**Hespress, Akhbarona, Barlamane**) et internationales (**CNN, BBC, Al Jazeera, Reuters**).
+This platform implements a distributed Big Data architecture designed to collect, process, and analyze news articles from Moroccan sources (**Hespress, Akhbarona, Barlamane**) as well as international outlets (**CNN, BBC, Al Jazeera, Reuters**).
 
-L’objectif est de couvrir l’ensemble du cycle de vie de la donnée, depuis l’ingestion brute jusqu’à l’analyse décisionnelle, en s’appuyant sur des standards industriels modernes.
+The goal is to cover the full data lifecycle—from raw ingestion to business intelligence—using modern industry standards.
 
 ---
 
-## Architecture du Système
+## System Architecture
 
-La solution repose sur une **architecture médaillon** (Multi-Layer Data Lake) afin de garantir la qualité, la fiabilité et la traçabilité des données :
+The solution is built on a **Medallion Architecture** (Multi-Layer Data Lake) to ensure data quality, reliability, and traceability:
 
 1. **Ingestion (Bronze)**
-   Collecte automatisée via un scraper Python (BeautifulSoup / Requests).
-   Stockage des données au format **JSON brut**.
+   Automated data collection using a Python scraper (BeautifulSoup / Requests).
+   Data is stored in **raw JSON format**.
 
 2. **Transformation (Silver)**
-   Nettoyage (suppression HTML), normalisation du texte et déduplication avec **Apache Spark**.
-   Stockage au format optimisé **Parquet**.
+   Data cleaning (HTML removal), text normalization, and deduplication using **Apache Spark**.
+   Data is stored in optimized **Parquet format**.
 
-3. **Analytique (Gold)**
-   Agrégation des indicateurs clés (KPIs) et structuration pour le reporting.
-   Stockage dans un Data Warehouse **PostgreSQL**.
+3. **Analytics (Gold)**
+   Aggregation of key performance indicators (KPIs) and preparation for reporting.
+   Data is stored in a **PostgreSQL** data warehouse.
 
 4. **Orchestration**
-   Automatisation, planification et supervision des workflows avec **Apache Airflow**.
+   Workflow automation, scheduling, and monitoring using **Apache Airflow**.
 
 ---
 
-## Stack Technique
+## Tech Stack
 
-* **Infrastructure** : Docker & Docker Compose
-* **Data Lake** : MinIO (compatible Amazon S3)
-* **Traitement Big Data** : PySpark (Spark 3.4.1)
-* **Orchestration** : Apache Airflow
-* **Data Warehouse** : PostgreSQL 13
-* **Langages** : Python, SQL, Java (JDBC)
+* **Infrastructure**: Docker & Docker Compose
+* **Data Lake**: MinIO (Amazon S3 compatible)
+* **Big Data Processing**: PySpark (Spark 3.4.1)
+* **Orchestration**: Apache Airflow
+* **Data Warehouse**: PostgreSQL 13
+* **Languages**: Python, SQL, Java (JDBC)
 
 ---
 
-## Structure du Projet
+## Project Structure
 
 ```text
 pfe_bigdata/
-├── Dockerfile              # Image Spark personnalisée (Drivers S3 & JDBC inclus)
-├── docker-compose.yml      # Orchestration de l'infrastructure
-├── requirements.txt        # Dépendances Python
+├── Dockerfile              # Custom Spark image (S3 & JDBC drivers included)
+├── docker-compose.yml      # Infrastructure orchestration
+├── requirements.txt        # Python dependencies
 ├── airflow/
 │   └── dags/
 │       └── news_pipeline.py
 ├── scripts/
-│   ├── scraper.py          # Collecte multi-sources
-│   └── spark_transform.py  # Transformation (architecture médaillon)
+│   ├── scraper.py          # Multi-source data collection
+│   └── spark_transform.py  # Medallion transformation logic
 └── README.md               # Documentation
 ```
 
 ---
 
-## Guide de Démarrage
+## Getting Started
 
-### 1. Lancement de l'infrastructure
+### 1. Start the Infrastructure
 
 ```bash
 docker-compose up --build -d
 ```
 
-### 2. Vérification des conteneurs
+### 2. Verify Running Containers
 
 ```bash
 docker ps
 ```
 
-Les services suivants doivent être actifs :
+The following services should be running:
 
 * postgres
 * minio
@@ -78,58 +78,62 @@ Les services suivants doivent être actifs :
 * spark-worker
 * airflow
 
-### 3. Configuration du Data Lake (MinIO)
+---
 
-1. Accéder à : http://localhost:9001
-2. Identifiants : `admin / admin`
-3. Créer les buckets suivants :
+### 3. Configure Data Lake (MinIO)
+
+1. Open: http://localhost:9001
+2. Credentials: `admin / admin`
+3. Create the following buckets:
 
    * `bronze`
    * `silver`
    * `gold`
 
-### 4. Configuration d'Airflow
+---
 
-1. Accéder à : http://localhost:8080
-2. Identifiants : `airflow / airflow`
-3. Aller dans **Admin → Connections**
-4. Ajouter une connexion `spark_default` :
+### 4. Configure Airflow
 
-   * Conn Type : Spark
-   * Host : spark://spark-master
-   * Port : 7077
+1. Open: http://localhost:8080
+2. Credentials: `airflow / airflow`
+3. Navigate to **Admin → Connections**
+4. Add a connection named `spark_default`:
+
+   * Conn Type: Spark
+   * Host: spark://spark-master
+   * Port: 7077
 
 ---
 
-### 5. Exécution du Pipeline
+### 5. Run the Pipeline
 
-1. Activer le DAG `pfe_news_pipeline`
-2. Cliquer sur **Trigger DAG**
-
----
-
-## Flux de Données (Workflow)
-
-1. **Bronze :**
-   Le scraper collecte les articles et génère un fichier JSON brut (`news_raw.json`).
-
-2. **Silver :**
-   Spark nettoie et transforme les données, puis les stocke en Parquet.
-
-3. **Gold :**
-   Spark agrège les données (ex : nombre d’articles par source) et les charge dans PostgreSQL.
+1. Enable the DAG `pfe_news_pipeline`
+2. Click **Trigger DAG**
 
 ---
 
-## Vérification des Résultats
+## Data Workflow
 
-Connexion à PostgreSQL :
+1. **Bronze**
+   The scraper collects articles and generates a raw JSON file (`news_raw.json`).
+
+2. **Silver**
+   Spark cleans and transforms the data, then stores it in Parquet format.
+
+3. **Gold**
+   Spark aggregates the data (e.g., number of articles per source) and loads it into PostgreSQL.
+
+---
+
+## Verify Results
+
+Connect to PostgreSQL:
 
 ```bash
 docker exec -it pfe_bigdata-postgres-1 psql -U admin -d data_warehouse
 ```
 
-Exécution de la requête :
+Run the query:
 
 ```sql
 SELECT * FROM kpi_articles_count;

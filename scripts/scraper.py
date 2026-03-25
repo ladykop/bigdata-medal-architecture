@@ -16,7 +16,7 @@ def run_scraping():
         try:
             res = requests.get(config['url'], headers=headers, timeout=10)
             soup = BeautifulSoup(res.text, 'html.parser')
-            # Extraction simple des 5 premiers titres pour démo
+            # Extracting titles based on the provided CSS selector, limiting to the top 5
             titles = soup.select(config['t'])[:5]
             for t in titles:
                 results.append({

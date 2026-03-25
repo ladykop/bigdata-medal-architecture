@@ -1,12 +1,12 @@
-# Scraping & Requêtes HTTP
+# Scraping & Parsing Requests 
 requests==2.31.0
 beautifulsoup4==4.12.2
 
-# Manipulation de données & Drivers
+# Data Manipulation & Database
 pandas==2.1.1
 psycopg2-binary==2.9.9
 
-# Airflow (pour les tests locaux si besoin)
+# Airflow (Workflow Orchestration)
 apache-airflow==2.7.1
 
 # Spark & Cloud Storage
