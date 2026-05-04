@@ -1,140 +1,101 @@
-# Big Data Platform: Media Analysis (Medallion Architecture)
+# Big Data Platform: News Media Analysis
+## Medallion Architecture Implementation
 
-This platform implements a distributed Big Data architecture designed to collect, process, and analyze news articles from Moroccan sources (**Hespress, Akhbarona, Barlamane**) as well as international outlets (**CNN, BBC, Al Jazeera, Reuters**).
-
-The goal is to cover the full data lifecycle—from raw ingestion to business intelligence—using modern industry standards.
-
----
-
-## System Architecture
-
-The solution is built on a **Medallion Architecture** (Multi-Layer Data Lake) to ensure data quality, reliability, and traceability:
-
-1. **Ingestion (Bronze)**
-   Automated data collection using a Python scraper (BeautifulSoup / Requests).
-   Data is stored in **raw JSON format**.
-
-2. **Transformation (Silver)**
-   Data cleaning (HTML removal), text normalization, and deduplication using **Apache Spark**.
-   Data is stored in optimized **Parquet format**.
-
-3. **Analytics (Gold)**
-   Aggregation of key performance indicators (KPIs) and preparation for reporting.
-   Data is stored in a **PostgreSQL** data warehouse.
-
-4. **Orchestration**
-   Workflow automation, scheduling, and monitoring using **Apache Airflow**.
+This project implements a complete Big Data pipeline that scrapes, processes, and analyzes news from Moroccan and International sources. It follows the **Medallion Architecture** (Bronze → Silver → Gold) to ensure data quality and reliability.
 
 ---
 
-## Tech Stack
+## 1. System Overview
 
-* **Infrastructure**: Docker & Docker Compose
-* **Data Lake**: MinIO (Amazon S3 compatible)
-* **Big Data Processing**: PySpark (Spark 3.4.1)
-* **Orchestration**: Apache Airflow
-* **Data Warehouse**: PostgreSQL 13
-* **Languages**: Python, SQL, Java (JDBC)
+The platform uses a multi-layer data lake approach:
 
----
-
-## Project Structure
-
-```text
-bdarch_bigdata/
-├── Dockerfile              # Custom Spark image (S3 & JDBC drivers included)
-├── docker-compose.yml      # Infrastructure orchestration
-├── requirements.txt        # Python dependencies
-├── airflow/
-│   └── dags/
-│       └── news_pipeline.py
-├── scripts/
-│   ├── scraper.py          # Multi-source data collection
-│   └── spark_transform.py  # Medallion transformation logic
-└── README.md               # Documentation
-```
+*   **Bronze (Raw)**: `scripts/scraper.py` collects news via RSS (BBC, CNN, Al Jazeera, Reuters) and specialized HTML scraping (Hespress, Akhbarona, Barlamane). Data is stored as raw JSON in MinIO.
+*   **Silver (Cleaned)**: `scripts/spark_transform.py` (using Pandas) cleans HTML tags, normalizes text, and filters out low-quality records. Stored as Parquet.
+*   **Gold (Aggregated)**: The transformation script calculates KPIs (like article counts per source) and saves them as Parquet and into PostgreSQL for analysis.
+*   **Orchestration**: Apache Airflow manages the workflow, running the scraper and then the transformation hourly.
 
 ---
 
-## Getting Started
+## 2. Infrastructure Setup
 
-### 1. Start the Infrastructure
-
+### Start the platform
+Run this command from the project root:
 ```bash
-docker-compose up --build -d
+docker-compose up -d
 ```
 
-### 2. Verify Running Containers
+### Verify containers
+Ensure these 4 services are running (`docker ps`):
+1.  **Airflow**: Workflow orchestration (Port 8080)
+2.  **MinIO**: S3-compatible Data Lake (Ports 9000/9001)
+3.  **PostgreSQL**: Data Warehouse (Port 5432)
+4.  **Kafka**: Real-time streaming (Port 9092)
 
-```bash
-docker ps
+---
+
+## 3. First-Time Configuration
+
+### Create MinIO Bucket
+1.  Open **http://localhost:9001** (Login: `admin` / `password123`).
+2.  Create a bucket named: `news-bucket`.
+
+### Access Airflow
+1.  Open **http://localhost:8080** (Username: `admin`).
+2.  Get your dynamic password:
+    ```bash
+    docker exec -it bigdata-architecture-airflow-1 cat /opt/airflow/standalone_admin_password.txt
+    ```
+3.  Turn **ON** the `bdarch_news_pipeline` DAG and click **Trigger DAG**.
+
+---
+
+## 4. Maintenance & Data Management
+
+Use these commands to manage your data and fix common issues.
+
+### Clear/Reset the Pipeline (Truncate)
+If you want to wipe the data and start a fresh scrape (e.g., to fix encoding or duplicates):
+
+**Wipe PostgreSQL Tables:**
+```powershell
+docker exec bigdata-architecture-postgres-1 psql -U airflow -d airflow -c "TRUNCATE news_articles, kpi_articles_count;"
 ```
 
-The following services should be running:
-
-* postgres
-* minio
-* spark-master
-* spark-worker
-* airflow
-
----
-
-### 3. Configure Data Lake (MinIO)
-
-1. Open: http://localhost:9001
-2. Credentials: `admin / admin`
-3. Create the following buckets:
-
-   * `bronze`
-   * `silver`
-   * `gold`
-
----
-
-### 4. Configure Airflow
-
-1. Open: http://localhost:8080
-2. Credentials: `airflow / airflow`
-3. Navigate to **Admin → Connections**
-4. Add a connection named `spark_default`:
-
-   * Conn Type: Spark
-   * Host: spark://spark-master
-   * Port: 7077
-
----
-
-### 5. Run the Pipeline
-
-1. Enable the DAG `bdarch_news_pipeline`
-2. Click **Trigger DAG**
-
----
-
-## Data Workflow
-
-1. **Bronze**
-   The scraper collects articles and generates a raw JSON file (`news_raw.json`).
-
-2. **Silver**
-   Spark cleans and transforms the data, then stores it in Parquet format.
-
-3. **Gold**
-   Spark aggregates the data (e.g., number of articles per source) and loads it into PostgreSQL.
-
----
-
-## Verify Results
-
-Connect to PostgreSQL:
-
-```bash
-docker exec -it bdarch_bigdata-postgres-1 psql -U admin -d data_warehouse
+**Clear MinIO Bronze Storage:**
+```powershell
+docker exec bigdata-architecture-airflow-1 python -c "import boto3; s3=boto3.resource('s3', endpoint_url='http://minio:9000',  aws_access_key_id='admin', aws_secret_access_key='password123'); s3.Bucket('news-bucket').objects.filter(Prefix='bronze/').delete()"
 ```
 
-Run the query:
+---
 
-```sql
-SELECT * FROM kpi_articles_count;
+## 5. Exporting Data (Arabic Fixed)
+
+To export your results to your local machine with correct Arabic character support, run these PowerShell commands:
+
+### Export to CSV (Recommended)
+```powershell
+# Set terminal to UTF-8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+# Export Detail (Articles)
+docker exec bigdata-architecture-postgres-1 psql -U airflow -d airflow -c "\copy news_articles TO STDOUT WITH CSV HEADER" | Out-File -Encoding utf8 news_articles.csv
+
+# Export Aggregates (KPIs)
+docker exec bigdata-architecture-postgres-1 psql -U airflow -d airflow -c "\copy kpi_articles_count TO STDOUT WITH CSV HEADER" | Out-File -Encoding utf8 kpi_articles_count.csv
 ```
+
+### Export to Text File (Table View)
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+docker exec bigdata-architecture-postgres-1 psql -U airflow -d airflow -c "SELECT source, date_publication, title, url FROM news_articles;" | Out-File -Encoding utf8 news_articles_view.txt
+```
+
+---
+
+## 6. Project Structure
+
+*   `dags/news_pipeline.py`: Airflow DAG definition and task logic.
+*   `scripts/scraper.py`: Logic for RSS and specialized HTML scraping.
+*   `scripts/spark_transform.py`: Data cleaning and SQL loading logic.
+*   `docker-compose.yaml`: Container infrastructure configuration.
